@@ -321,7 +321,8 @@ int main() {
 
     float movementPad = 0.015;
     float movementTimer = 0;
- 
+    
+    bufferBackgroundImage(CAMERAPOSX,CAMERAPOSY);
     
     while (!glfwWindowShouldClose(WINDOW)) {
         glClear(GL_COLOR_BUFFER_BIT);
