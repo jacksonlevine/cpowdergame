@@ -239,7 +239,7 @@ void drawForegroundPixels(double xpos, double ypos, unsigned char type) {
     dx = (int)(xpos * ((float)GAMEWIDTH / CURRENTWINDOWWIDTH));
     dy = (int)(yp * ((float)GAMEHEIGHT / CURRENTWINDOWHEIGHT));
     
-    static bool liqTravLeft = false; //only for liquids
+    static bool liqTravLeft = false; //only for liquids. Make every other pixel travel left, the rest travel right.
 
     for(int i = 0; i < sizeof(drawPixels)/sizeof(int); i+= 2) {
         int index = (dy+drawPixels[i+1]) * GAMEWIDTH + dx + drawPixels[i];
