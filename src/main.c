@@ -281,7 +281,7 @@ int main() {
 
     glfwInit();
 
-    WINDOW = glfwCreateWindow(800, 600, "CPowder Game", NULL, NULL);
+    WINDOW = glfwCreateWindow(WINDOWWIDTH, WINDOWHEIGHT, "CPowder Game", NULL, NULL);
 
     glfwMakeContextCurrent(WINDOW);
     glewInit();

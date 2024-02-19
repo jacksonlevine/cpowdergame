@@ -1,5 +1,6 @@
 #include "particlefuncs.h"
 
+//Have your particle call densitySwapFunc at the end if it isn't solid
 void densitySwapFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
     unsigned char* theByte = &FOREPIXELS[index];
     if(getColorBits(FOREPIXELS[index - GAMEWIDTH]) != 0) {
@@ -33,6 +34,7 @@ void densitySwapFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
     }
 }
 
+//Default "sand" movement
 void defaultFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
     unsigned char* theByte = &FOREPIXELS[index];
 
@@ -56,6 +58,7 @@ void defaultFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
     densitySwapFunc(FOREPIXELS, index, isOddFrame);
 }
 
+//Liquid movement with fast spread
 void liquidFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
     unsigned char* theByte = &FOREPIXELS[index];
 
@@ -115,6 +118,7 @@ void liquidFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
     densitySwapFunc(FOREPIXELS, index, isOddFrame);
 }
 
+//Solid inert material
 void solidFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
     //Nothing
 }

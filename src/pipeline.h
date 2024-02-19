@@ -5,7 +5,6 @@
 #include <GLFW/glfw3.h>
 #include "utils.h"
 
-
 void createShader(const char *vertPath, const char *fragPath, GLuint *out, const char *readableName);
 
 #endif
