@@ -46,6 +46,9 @@ double MOUSEY = 0;
 
 unsigned char SELECTED_TYPE = 1;
 
+int CURRENTWINDOWWIDTH = WINDOWWIDTH;
+int CURRENTWINDOWHEIGHT = WINDOWHEIGHT;
+
 float COLORPALETTE[16 * 3]  = {
     0.0f, 0.0f, 0.0f,//black 0
     0.6f, 0.5f, 0.3f,//tan 1
@@ -230,11 +233,11 @@ void drawForegroundPixels(double xpos, double ypos, unsigned char type) {
         -1, -2
     };
 
-    int yp = WINDOWHEIGHT - (int)ypos;
+    int yp = CURRENTWINDOWHEIGHT - (int)ypos;
 
     int dx, dy;
-    dx = (int)(xpos/RATIO_DENOMINATOR);
-    dy = (int)(yp/RATIO_DENOMINATOR);
+    dx = (int)(xpos * ((float)GAMEWIDTH / CURRENTWINDOWWIDTH));
+    dy = (int)(yp * ((float)GAMEHEIGHT / CURRENTWINDOWHEIGHT));
     
     static bool liqTravLeft = false; //only for liquids
 
@@ -267,6 +270,12 @@ void stampBackPixelsToFront() {
     
 }
 
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+    CURRENTWINDOWWIDTH = width;
+    CURRENTWINDOWHEIGHT = height;
+}
 
 int main() {
 
@@ -283,6 +292,7 @@ int main() {
     glfwSetMouseButtonCallback(WINDOW, mouse_button_callback);
     glfwSetCursorPosCallback(WINDOW, cursor_position_callback);
     glfwSetKeyCallback(WINDOW, keyCallback);
+    glfwSetFramebufferSizeCallback(WINDOW, framebuffer_size_callback);
 
     createShader("assets/shaders/vert.glsl", "assets/shaders/backfrag.glsl", &BACKSHADER, "Background shader");
     createShader("assets/shaders/vert.glsl", "assets/shaders/frag.glsl", &FORESHADER, "Foreground shader");
