@@ -44,6 +44,8 @@ bool MOUSE_RIGHTCLICKED = false;
 double MOUSEX = 0;
 double MOUSEY = 0;
 
+unsigned char SELECTED_TYPE = 1;
+
 float COLORPALETTE[16 * 3]  = {
     0.0f, 0.0f, 0.0f,//black 0
     0.6f, 0.5f, 0.3f,//tan 1
@@ -99,6 +101,15 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     if(key == GLFW_KEY_G) {
         stampBackPixelsToFront();
     }
+    if(key == GLFW_KEY_1) {
+        SELECTED_TYPE = 1;
+    }
+    if(key == GLFW_KEY_2) {
+        SELECTED_TYPE = 2;
+    }
+    if(key == GLFW_KEY_3) {
+        SELECTED_TYPE = 3;
+    }
 }
 
 bool moveBackground() {
@@ -125,8 +136,29 @@ bool moveBackground() {
 void updatePowderSimulation() {
     static bool isOddFrame = false;
 
-    for(int j = 0; j < GAMEHEIGHT; j++) {
-        for(int i = 0; i < GAMEWIDTH; i++) {
+    for(int j = GAMEHEIGHT-1; j > 0; j--) {
+        for(int i = GAMEWIDTH-1; i > GAMEWIDTH/2; i--) {
+
+            int index = j * GAMEWIDTH + i;
+
+            bool aboveBottom = j > 1;
+
+            unsigned char* theByte = &FOREPIXELS[index];
+            if(aboveBottom) {
+
+                if(getColorBits(*theByte) != 0 && (isOddBit(*theByte) == isOddFrame)) {
+                    setOddBit(theByte, isOddFrame ? 0 : 1);
+                
+                    (*PARTICLEFUNCS[getColorBits(*theByte)])(FOREPIXELS, index, isOddFrame);
+                }
+                
+            }
+
+        }
+    }
+
+    for(int j = GAMEHEIGHT-1; j > 0; j--) {
+        for(int i = 0; i <= GAMEWIDTH/2; i++) {
 
             int index = j * GAMEWIDTH + i;
 
@@ -203,14 +235,24 @@ void drawForegroundPixels(double xpos, double ypos, unsigned char type) {
     int dx, dy;
     dx = (int)(xpos/RATIO_DENOMINATOR);
     dy = (int)(yp/RATIO_DENOMINATOR);
+    
+    static bool liqTravLeft = false; //only for liquids
 
     for(int i = 0; i < sizeof(drawPixels)/sizeof(int); i+= 2) {
         int index = (dy+drawPixels[i+1]) * GAMEWIDTH + dx + drawPixels[i];
 
-        if(index > 0 && index <= GAMEWIDTH*GAMEHEIGHT - 1) {
-            FOREPIXELS[index] = type;
+        unsigned char byte = type;
+        
+        if(liqTravLeft) {
+            byte |= liquidTravLeftBit;
         }
+
+        if(index > 0 && index <= GAMEWIDTH*GAMEHEIGHT - 1) {
+            FOREPIXELS[index] = byte;
+        }
+        
     }
+    liqTravLeft = !liqTravLeft;
 }
 
 void stampBackPixelsToFront() {
@@ -351,7 +393,7 @@ int main() {
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         if(MOUSE_CLICKED) {
-            drawForegroundPixels(MOUSEX, MOUSEY, 2);
+            drawForegroundPixels(MOUSEX, MOUSEY, SELECTED_TYPE);
         }
         if(MOUSE_RIGHTCLICKED) {
             drawForegroundPixels(MOUSEX, MOUSEY, 0);
