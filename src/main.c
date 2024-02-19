@@ -14,6 +14,9 @@
 #include "particlefuncs.h"
 #include "bitfunctions.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
 GLFWwindow *WINDOW;
 GLuint FORESHADER;
 GLuint BACKSHADER;
@@ -87,6 +90,24 @@ void bufferBackgroundImage(int offsetX, int offsetY) {
     }
 }
 
+void saveToImage() {
+    stbi_write_png("image.png", GAMEWIDTH, GAMEHEIGHT, 1, FOREPIXELS, GAMEWIDTH);
+}
+
+void loadFromImage(const char* path) {
+    int w, h, ch;
+    unsigned char *data = stbi_load(path, &w, &h, &ch, 1);
+    memcpy(FOREPIXELS, data, GAMEWIDTH*GAMEHEIGHT);
+    STBI_FREE(data);
+}
+
+void drop_callback(GLFWwindow* window, int count, const char** paths)
+{
+    int i;
+    for (i = 0;  i < count;  i++)
+        loadFromImage(paths[i]);
+}
+
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if(key == GLFW_KEY_W) {
@@ -112,6 +133,9 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     }
     if(key == GLFW_KEY_3) {
         SELECTED_TYPE = 3;
+    }
+    if(key == GLFW_KEY_M) {
+        saveToImage();
     }
 }
 
@@ -293,6 +317,7 @@ int main() {
     glfwSetCursorPosCallback(WINDOW, cursor_position_callback);
     glfwSetKeyCallback(WINDOW, keyCallback);
     glfwSetFramebufferSizeCallback(WINDOW, framebuffer_size_callback);
+    glfwSetDropCallback(WINDOW, drop_callback);
 
     createShader("assets/shaders/vert.glsl", "assets/shaders/backfrag.glsl", &BACKSHADER, "Background shader");
     createShader("assets/shaders/vert.glsl", "assets/shaders/frag.glsl", &FORESHADER, "Foreground shader");
