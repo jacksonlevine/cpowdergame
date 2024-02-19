@@ -9,14 +9,20 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include "pipeline.h"
+#include "gamefacts.h"
+#include "particlefuncs.h"
+#include "bitfunctions.h"
+
 GLFWwindow *WINDOW;
-GLuint SHADERPROG;
+GLuint FORESHADER;
+GLuint BACKSHADER;
 
-#define GAMEWIDTH 500
-#define GAMEHEIGHT 500
+unsigned char BACKPIXELS[GAMEWIDTH*GAMEHEIGHT];
+unsigned char FOREPIXELS[GAMEWIDTH*GAMEHEIGHT];
 
-unsigned char PIXELS[GAMEWIDTH*GAMEHEIGHT];
-GLuint GAMETEXTURE;
+GLuint BACKTEXTURE;
+GLuint FORETEXTURE;
 
 unsigned char *BACKGROUNDIMAGE;
 int BIWIDTH, BIHEIGHT, BICHANS;
@@ -29,10 +35,19 @@ bool RIGHT = false;
 int CAMERAPOSX = 0;
 int CAMERAPOSY = 0;
 
+//for determining deltaTime
+float lastFrame = 0;
+float deltaTime = 0;
+
+bool MOUSE_CLICKED = false;
+bool MOUSE_RIGHTCLICKED = false;
+double MOUSEX = 0;
+double MOUSEY = 0;
+
 float COLORPALETTE[16 * 3]  = {
     0.0f, 0.0f, 0.0f,//black 0
     0.6f, 0.5f, 0.3f,//tan 1
-    0.0f, 0.0f, 1.0f,//blue 2
+    0.0f, 0.0f, 1.0f,//blue 2 
     0.5f, 0.5f, 0.5f,//grey 3
     1.0f, 0.5f, 0.0f,//orange 4
     0.0f, 1.0f, 1.0f,//cyan 5
@@ -48,25 +63,12 @@ float COLORPALETTE[16 * 3]  = {
     1.0f, 1.0f, 1.0f//white 15
 };
 
-char* loadFile(const char* path) {
-    FILE* file = fopen(path, "r");
-    if(file == NULL) {
-        fprintf(stderr, "Error opening file %s \n", path);
-        return NULL;
-    }
+void stampBackPixelsToFront();
 
-    fseek(file, 0, SEEK_END);
-    long length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char* buffer = (char*)malloc(length + sizeof(char));
-    memset(buffer, 0, length + sizeof(char));
-
-    fread(buffer, sizeof(char), length, file);
-    buffer[length] = '\0';
- 
-    fclose(file);
-    return buffer;
+void updateDeltaTime() {
+    double currentFrame = glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
 }
 
 void bufferBackgroundImage(int offsetX, int offsetY) {
@@ -75,7 +77,7 @@ void bufferBackgroundImage(int offsetX, int offsetY) {
             int biIndex = abs((offsetX) + (offsetY*BIWIDTH) + (j * BIWIDTH) + (i)) % (BIWIDTH * BIHEIGHT);
             int pixelsIndex = j * GAMEWIDTH + i;
 
-            PIXELS[pixelsIndex] = BACKGROUNDIMAGE[biIndex];
+            BACKPIXELS[pixelsIndex] = BACKGROUNDIMAGE[biIndex];
         }
     }
 }
@@ -94,9 +96,12 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     if(key == GLFW_KEY_D) {
         RIGHT = action;
     }
+    if(key == GLFW_KEY_G) {
+        stampBackPixelsToFront();
+    }
 }
 
-bool reactToInput() {
+bool moveBackground() {
     bool moved = false;
     if(UP) {
         CAMERAPOSY += 1;
@@ -116,21 +121,6 @@ bool reactToInput() {
     }
     return moved;
 }
-unsigned char colorBits = 0b00001111;
-unsigned char oddBit = 0b00010000;
-
-unsigned char getColorBits(unsigned char byte) {
-    return (byte & colorBits);
-}
-
-bool isOddBit(unsigned char byte) {
-    return (byte & oddBit);
-}
-
-void setOddBit(unsigned char *byte, unsigned char bit) {
-    *byte &= ~oddBit;
-    *byte |= (bit ? oddBit : 0);
-}
 
 void updatePowderSimulation() {
     static bool isOddFrame = false;
@@ -142,34 +132,97 @@ void updatePowderSimulation() {
 
             bool aboveBottom = j > 1;
 
-            unsigned char* theByte = &PIXELS[index];
+            unsigned char* theByte = &FOREPIXELS[index];
+            if(aboveBottom) {
 
-            if(getColorBits(*theByte) != 0 && (isOddBit(*theByte) == isOddFrame)) {
-                setOddBit(theByte, isOddFrame ? 1 : 0);
-                if(aboveBottom) {
-                    if(getColorBits(PIXELS[index - GAMEWIDTH]) == 0) {
-                        PIXELS[index - GAMEWIDTH] = *theByte;
-                        *theByte = 0;
-                    } else {
-                        if(isOddFrame) {
-                            if(getColorBits(PIXELS[index - GAMEWIDTH - 1]) == 0) {
-                                PIXELS[index - GAMEWIDTH - 1] = *theByte;
-                                *theByte = 0;
-                            }
-                        } else {
-                            if(getColorBits(PIXELS[index - GAMEWIDTH + 1]) == 0) {
-                                PIXELS[index - GAMEWIDTH + 1] = *theByte;
-                                *theByte = 0;
-                            }
-                        }
-                    }
+                if(getColorBits(*theByte) != 0 && (isOddBit(*theByte) == isOddFrame)) {
+                    setOddBit(theByte, isOddFrame ? 0 : 1);
+                
+                    (*PARTICLEFUNCS[getColorBits(*theByte)])(FOREPIXELS, index, isOddFrame);
                 }
+                
             }
 
         }
     }
-
     isOddFrame = !isOddFrame;
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT)
+    {
+        if(action == GLFW_PRESS) {
+            MOUSE_CLICKED = true;
+        } else if (action == GLFW_RELEASE) {
+            MOUSE_CLICKED = false;
+        }
+    }
+    if (button == GLFW_MOUSE_BUTTON_RIGHT)
+    {
+        if(action == GLFW_PRESS) {
+            MOUSE_RIGHTCLICKED = true;
+        } else if (action == GLFW_RELEASE) {
+            MOUSE_RIGHTCLICKED = false;
+        }
+    }
+}
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    MOUSEX = xpos;
+    MOUSEY = ypos;
+}
+
+void drawForegroundPixels(double xpos, double ypos, unsigned char type) {
+    static int drawPixels[] = {
+        0, 0,
+        1, 0,
+        -1, 0,
+        0, 1,
+        0, -1,
+        -1, 1,
+        -1, -1,
+        1, 1,
+        1, -1,
+        -2, 0,
+        -2, 1,
+        -2, -1,
+        2, 0,
+        2, 1,
+        2, -1,
+        0, 2,
+        1, 2,
+        -1, 2,
+        0, -2,
+        1, -2,
+        -1, -2
+    };
+
+    int yp = WINDOWHEIGHT - (int)ypos;
+
+    int dx, dy;
+    dx = (int)(xpos/RATIO_DENOMINATOR);
+    dy = (int)(yp/RATIO_DENOMINATOR);
+
+    for(int i = 0; i < sizeof(drawPixels)/sizeof(int); i+= 2) {
+        int index = (dy+drawPixels[i+1]) * GAMEWIDTH + dx + drawPixels[i];
+
+        if(index > 0 && index <= GAMEWIDTH*GAMEHEIGHT - 1) {
+            FOREPIXELS[index] = type;
+        }
+    }
+}
+
+void stampBackPixelsToFront() {
+    for(int j = 0; j < GAMEHEIGHT; j++) {
+        for(int i = 0; i < GAMEWIDTH; i++) {
+            int index = j * GAMEWIDTH + i;
+            if(getColorBits(FOREPIXELS[index]) == 0) {
+                FOREPIXELS[index] = BACKPIXELS[index];
+            }
+        }
+    }
+    
 }
 
 
@@ -181,54 +234,26 @@ int main() {
 
     glfwMakeContextCurrent(WINDOW);
     glewInit();
+    
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
 
+    glfwSetMouseButtonCallback(WINDOW, mouse_button_callback);
+    glfwSetCursorPosCallback(WINDOW, cursor_position_callback);
     glfwSetKeyCallback(WINDOW, keyCallback);
 
-    const char* vertexText = loadFile("assets/shaders/vert.glsl");
-    const char* fragmentText = loadFile("assets/shaders/frag.glsl");
+    createShader("assets/shaders/vert.glsl", "assets/shaders/backfrag.glsl", &BACKSHADER, "Background shader");
+    createShader("assets/shaders/vert.glsl", "assets/shaders/frag.glsl", &FORESHADER, "Foreground shader");
 
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glGenTextures(1, &BACKTEXTURE);
+    glBindTexture(GL_TEXTURE_2D, BACKTEXTURE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, GAMEWIDTH, GAMEHEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
 
-    glShaderSource(vertexShader, 1, &vertexText, NULL);
-    glShaderSource(fragmentShader, 1, &fragmentText, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    GLint success;
-    GLchar infoLog[512];
-
-    glCompileShader(vertexShader);
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        fprintf(stderr, "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
-    }
-    glCompileShader(fragmentShader);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        fprintf(stderr, "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s\n", infoLog);
-    }
-
-    SHADERPROG = glCreateProgram();
-
-    glAttachShader(SHADERPROG, vertexShader);
-    glAttachShader(SHADERPROG, fragmentShader);
-
-    glLinkProgram(SHADERPROG);
-    glGetProgramiv(SHADERPROG, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(SHADERPROG, 512, NULL, infoLog);
-        fprintf(stderr, "ERROR::SHADER::PROGRAM::LINKING_FAILED\n%s\n", infoLog);
-    }
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    free((void*)vertexText);
-    free((void*)fragmentText);
-
-    glGenTextures(1, &GAMETEXTURE);
-    glBindTexture(GL_TEXTURE_2D, GAMETEXTURE);
+    glGenTextures(1, &FORETEXTURE);
+    glBindTexture(GL_TEXTURE_2D, FORETEXTURE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, GAMEWIDTH, GAMEHEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -245,60 +270,103 @@ int main() {
         1.0f,  1.0f,   1.0f, 1.0f
     };
 
-    GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    GLuint foreVAO;
+    GLuint foreVBO;
+    glGenVertexArrays(1, &foreVAO);
+    glGenBuffers(1, &foreVBO);
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindVertexArray(foreVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, foreVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
 
     //position attribute
-    GLint pos_attrib = glGetAttribLocation(SHADERPROG, "pos");
-    glEnableVertexAttribArray(pos_attrib);
-    glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    GLint forepos_attrib = glGetAttribLocation(FORESHADER, "pos");
+    glEnableVertexAttribArray(forepos_attrib);
+    glVertexAttribPointer(forepos_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
 
     //texture coord attribute
-    GLint tex_attrib = glGetAttribLocation(SHADERPROG, "texcoord");
-    glEnableVertexAttribArray(tex_attrib);
-    glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    GLint foretex_attrib = glGetAttribLocation(FORESHADER, "texcoord");
+    glEnableVertexAttribArray(foretex_attrib);
+    glVertexAttribPointer(foretex_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
-    glUseProgram(SHADERPROG);
-    glUniform3fv(glGetUniformLocation(SHADERPROG, "colorPalette"), 16, (const float*)&COLORPALETTE[0]);
+    glUseProgram(FORESHADER);
+    glUniform3fv(glGetUniformLocation(FORESHADER, "colorPalette"), 16, (const float*)&COLORPALETTE[0]);
+
+
+    GLuint backVAO;
+    GLuint backVBO;
+    glGenVertexArrays(1, &backVAO);
+    glGenBuffers(1, &backVBO);
+
+    glBindVertexArray(backVAO); 
+    glBindBuffer(GL_ARRAY_BUFFER, backVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+
+    //position attribute
+    GLint backpos_attrib = glGetAttribLocation(FORESHADER, "pos");
+    glEnableVertexAttribArray(backpos_attrib);
+    glVertexAttribPointer(backpos_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+
+    //texture coord attribute
+    GLint backtex_attrib = glGetAttribLocation(FORESHADER, "texcoord");
+    glEnableVertexAttribArray(backtex_attrib);
+    glVertexAttribPointer(backtex_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    glUseProgram(BACKSHADER);
+    glUniform3fv(glGetUniformLocation(BACKSHADER, "colorPalette"), 16, (const float*)&COLORPALETTE[0]);
+
 
     //load the background image
     BACKGROUNDIMAGE = stbi_load("assets/space.png", &BIWIDTH, &BIHEIGHT, &BICHANS, 1);
 
-    bufferBackgroundImage(CAMERAPOSX,CAMERAPOSY);
-
-    int movementPad = 25;
-    int movementTimer = 0;
+    float movementPad = 0.015;
+    float movementTimer = 0;
  
     
-
     while (!glfwWindowShouldClose(WINDOW)) {
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0.0f,0.0f,0.0f,1.0f);
 
         if(movementTimer > movementPad) {
-            if(reactToInput()) {
+            
+            if(moveBackground()) {
                 bufferBackgroundImage(CAMERAPOSX,CAMERAPOSY);
-            } else {
-                updatePowderSimulation();
+                glBindTexture(GL_TEXTURE_2D, BACKTEXTURE);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GAMEWIDTH, GAMEHEIGHT, GL_RED, GL_UNSIGNED_BYTE, BACKPIXELS);
             }
+
+            updatePowderSimulation();
+            
             movementTimer = 0;
         } else {
-            movementTimer += 1;
+            movementTimer += deltaTime;
         }
-        
-        
 
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GAMEWIDTH, GAMEHEIGHT, GL_RED, GL_UNSIGNED_BYTE, PIXELS);
-
+        glUseProgram(BACKSHADER);
+        glBindVertexArray(backVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, backVBO);
+        glBindTexture(GL_TEXTURE_2D, BACKTEXTURE);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GAMEWIDTH, GAMEHEIGHT, GL_RED, GL_UNSIGNED_BYTE, BACKPIXELS);
         glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        if(MOUSE_CLICKED) {
+            drawForegroundPixels(MOUSEX, MOUSEY, 2);
+        }
+        if(MOUSE_RIGHTCLICKED) {
+            drawForegroundPixels(MOUSEX, MOUSEY, 0);
+        }
+
+        glUseProgram(FORESHADER);
+        glBindVertexArray(foreVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, foreVBO);
+        glBindTexture(GL_TEXTURE_2D, FORETEXTURE);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GAMEWIDTH, GAMEHEIGHT, GL_RED, GL_UNSIGNED_BYTE, FOREPIXELS);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
 
         glfwSwapBuffers(WINDOW);
         glfwPollEvents();
+        updateDeltaTime();
     }
 
     return 0;
