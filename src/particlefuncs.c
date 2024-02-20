@@ -278,6 +278,7 @@ void waterFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
         // 1, -2,
         // -1, -2
     };
+    bool absorbed = false;
     for(int i = 0; i < sizeof(drawPixels)/sizeof(int); i+= 2) {
         int ind = index + (drawPixels[i+1]) * GAMEWIDTH + drawPixels[i];
         if(ind > 0 && ind <= GAMEWIDTH*GAMEHEIGHT - 1) {
@@ -287,9 +288,80 @@ void waterFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
                 safeSet(FOREPIXELS, ind, STONE);
             }
 
+            if(getColorBits(*safeGet(FOREPIXELS, ind)) == DIRT) {
+                unsigned char wettedByte = WETDIRT;
+                setWetness(&wettedByte, 1);
+                safeSet(FOREPIXELS, ind, wettedByte);
+                safeSet(FOREPIXELS, index, 0); //i disappear into this wet dirt
+                absorbed = true;
+            } else if(getColorBits(*safeGet(FOREPIXELS, ind)) == WETDIRT) {
+                unsigned char *wetByte = safeGet(FOREPIXELS, ind);
+                unsigned char currentWetness = getWetness(*wetByte);
+                if(currentWetness < 3) {
+                    setWetness(wetByte, currentWetness + 1);
+                    //printf("New wetness: %i\n", currentWetness + 1);
+                    safeSet(FOREPIXELS, index, 0); //i disappear into this wet dirt
+                    absorbed = true;
+                }
+                
+            }
+
         }
     }
-    fastLiquidFunc(FOREPIXELS, index, isOddFrame);
+    if(!absorbed) {
+        fastLiquidFunc(FOREPIXELS, index, isOddFrame);
+    }
+}
+
+//Wet dirt
+void wetDirtFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
+    static int drawPixels[] = {
+        1, 0,
+        -1, 0,
+        0, 1,
+        0, -1,
+        -1, 1,
+        -1, -1,
+        1, 1,
+        1, -1
+    };
+    unsigned char *myByte = safeGet(FOREPIXELS, index);
+    unsigned char myWetness = getWetness(*myByte);
+
+        for(int i = 0; i < sizeof(drawPixels)/sizeof(int); i+= 2) {
+            int ind = index + (drawPixels[i+1]) * GAMEWIDTH + drawPixels[i];
+            if(ind > 0 && ind <= GAMEWIDTH*GAMEHEIGHT - 1) {
+                
+                if(myWetness > 1) {
+                    //Affect surrounding pixels
+                    if(getColorBits(*safeGet(FOREPIXELS, ind)) == DIRT) {
+                        unsigned char wettedByte = WETDIRT;
+                        setWetness(&wettedByte, 1);
+                        safeSet(FOREPIXELS, ind, wettedByte);
+
+                        myWetness -= 1;
+                        setWetness(myByte, myWetness); //i lose one wetness to this guy
+                    } else {
+
+                        if(getColorBits(*safeGet(FOREPIXELS, ind)) == WETDIRT) {
+                            unsigned char *wetByte = safeGet(FOREPIXELS, ind);
+                            unsigned char currentWetness = getWetness(*wetByte);
+                            if(currentWetness < 3) {
+                                setWetness(wetByte, currentWetness + 1);
+                                myWetness -= 1;
+                                setWetness(myByte, myWetness); //i lose one wetness to this guy
+                            }
+                            
+                        }
+
+                    }
+
+                    
+                }
+            }
+        }
+    
+    defaultFunc(FOREPIXELS, index, isOddFrame);
 }
 
 void steamFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
@@ -330,7 +402,7 @@ ParticleFunc PARTICLEFUNCS[16] = {
     steamFunc,
     defaultFunc,
 
-    defaultFunc,
+    wetDirtFunc,
     defaultFunc,
     defaultFunc,
     defaultFunc,

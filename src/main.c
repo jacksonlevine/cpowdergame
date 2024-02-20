@@ -53,15 +53,15 @@ int CURRENTWINDOWWIDTH = WINDOWWIDTH;
 int CURRENTWINDOWHEIGHT = WINDOWHEIGHT;
 
 float COLORPALETTE[16 * 4]  = {
-    0.0f, 0.0f, 0.0f, 1.0f,//black 0
-    0.6f, 0.5f, 0.3f, 1.0f,//tan 1
-    0.0f, 0.0f, 1.0f, 0.7f,//blue 2 
-    0.5f, 0.5f, 0.5f, 1.0f,//grey 3
-    0.702f, 0.522f, 0.38f, 1.0f,//wooden 4
-    1.0f, 0.5f, 0.0f, 1.0f,//orange 5
-    1.0f, 1.0f, 1.0f, 1.0f,//lightblue 6
-    1.0f, 0.0f, 1.0f, 1.0f,//magenta 7
-    0.5f, 0.0f, 0.6f, 1.0f,//purple 8
+    0.0f, 0.0f, 0.0f, 1.0f,// 0
+    0.6f, 0.5f, 0.3f, 1.0f,//sand 1
+    0.0f, 0.0f, 1.0f, 0.7f,//water 2 
+    0.5f, 0.5f, 0.5f, 1.0f,//stone 3
+    0.702f, 0.522f, 0.38f, 1.0f,//wood 4
+    1.0f, 0.5f, 0.0f, 1.0f,//magma 5
+    1.0f, 1.0f, 1.0f, 1.0f,//steam 6
+    0.522f, 0.412f, 0.318f, 1.0f,//dirt 7
+    0.341f, 0.224f, 0.118f, 1.0f,//wet dirt 8
     1.0f, 1.0f, 0.0f, 1.0f,//yellow 9
     1.0f, 0.0f, 0.0f, 1.0f,//red 10
     0.0f, 1.0f, 0.0f, 1.0f,//green 11
@@ -84,7 +84,6 @@ void bufferBackgroundImage(int offsetX, int offsetY) {
         for(int i = 0; i < GAMEWIDTH; i++) {
             int biIndex = abs((offsetX) + (offsetY*BIWIDTH) + (j * BIWIDTH) + (i)) % (BIWIDTH * BIHEIGHT);
             int pixelsIndex = j * GAMEWIDTH + i;
-
             BACKPIXELS[pixelsIndex] = BACKGROUNDIMAGE[biIndex];
         }
     }
@@ -139,6 +138,12 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     }
     if(key == GLFW_KEY_5) {
         SELECTED_TYPE = MAGMA;
+    }
+    if(key == GLFW_KEY_6) {
+        SELECTED_TYPE = STEAM;
+    }
+    if(key == GLFW_KEY_7) {
+        SELECTED_TYPE = DIRT;
     }
     if(key == GLFW_KEY_M) {
         saveToImage();

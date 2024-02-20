@@ -7,6 +7,8 @@
 #define WOOD 4
 #define MAGMA 5
 #define STEAM 6
+#define DIRT 7
+#define WETDIRT 8
 
 extern unsigned char DENSITIES[16];
 
