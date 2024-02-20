@@ -297,7 +297,7 @@ void waterFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
             } else if(getColorBits(*safeGet(FOREPIXELS, ind)) == WETDIRT) {
                 unsigned char *wetByte = safeGet(FOREPIXELS, ind);
                 unsigned char currentWetness = getWetness(*wetByte);
-                if(currentWetness < 3) {
+                if(currentWetness < 2) {
                     setWetness(wetByte, currentWetness + 1);
                     //printf("New wetness: %i\n", currentWetness + 1);
                     safeSet(FOREPIXELS, index, 0); //i disappear into this wet dirt
@@ -346,7 +346,7 @@ void wetDirtFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame) {
                         if(getColorBits(*safeGet(FOREPIXELS, ind)) == WETDIRT) {
                             unsigned char *wetByte = safeGet(FOREPIXELS, ind);
                             unsigned char currentWetness = getWetness(*wetByte);
-                            if(currentWetness < 3) {
+                            if(currentWetness < 2) {
                                 setWetness(wetByte, currentWetness + 1);
                                 myWetness -= 1;
                                 setWetness(myByte, myWetness); //i lose one wetness to this guy
