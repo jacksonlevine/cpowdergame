@@ -52,23 +52,23 @@ unsigned char SELECTED_TYPE = 1;
 int CURRENTWINDOWWIDTH = WINDOWWIDTH;
 int CURRENTWINDOWHEIGHT = WINDOWHEIGHT;
 
-float COLORPALETTE[16 * 3]  = {
-    0.0f, 0.0f, 0.0f,//black 0
-    0.6f, 0.5f, 0.3f,//tan 1
-    0.0f, 0.0f, 1.0f,//blue 2 
-    0.5f, 0.5f, 0.5f,//grey 3
-    1.0f, 0.5f, 0.0f,//orange 4
-    0.0f, 1.0f, 1.0f,//cyan 5
-    0.0f, 0.5f, 1.0f,//teal 6
-    1.0f, 0.0f, 1.0f,//magenta 7
-    0.5f, 0.0f, 0.6f,//purple 8
-    1.0f, 1.0f, 0.0f,//yellow 9
-    1.0f, 0.0f, 0.0f,//red 10
-    0.0f, 1.0f, 0.0f,//green 11
-    1.0f, 1.0f, 1.0f,//white 12
-    1.0f, 1.0f, 1.0f,//white 13
-    1.0f, 1.0f, 1.0f,//white 14
-    1.0f, 1.0f, 1.0f//white 15
+float COLORPALETTE[16 * 4]  = {
+    0.0f, 0.0f, 0.0f, 1.0f,//black 0
+    0.6f, 0.5f, 0.3f, 1.0f,//tan 1
+    0.0f, 0.0f, 1.0f, 0.7f,//blue 2 
+    0.5f, 0.5f, 0.5f, 1.0f,//grey 3
+    0.702f, 0.522f, 0.38f, 1.0f,//wooden 4
+    1.0f, 0.5f, 0.0f, 1.0f,//orange 5
+    1.0f, 1.0f, 1.0f, 1.0f,//lightblue 6
+    1.0f, 0.0f, 1.0f, 1.0f,//magenta 7
+    0.5f, 0.0f, 0.6f, 1.0f,//purple 8
+    1.0f, 1.0f, 0.0f, 1.0f,//yellow 9
+    1.0f, 0.0f, 0.0f, 1.0f,//red 10
+    0.0f, 1.0f, 0.0f, 1.0f,//green 11
+    1.0f, 1.0f, 1.0f, 1.0f,//white 12
+    0.0f, 1.0f, 1.0f, 1.0f,//cyan 13
+    1.0f, 1.0f, 1.0f, 1.0f,//white 14
+    1.0f, 1.0f, 1.0f, 1.0f//white 15
 };
 
 void stampBackPixelsToFront();
@@ -126,13 +126,19 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         stampBackPixelsToFront();
     }
     if(key == GLFW_KEY_1) {
-        SELECTED_TYPE = 1;
+        SELECTED_TYPE = SAND;
     }
     if(key == GLFW_KEY_2) {
-        SELECTED_TYPE = 2;
+        SELECTED_TYPE = WATER;
     }
     if(key == GLFW_KEY_3) {
-        SELECTED_TYPE = 3;
+        SELECTED_TYPE = STONE;
+    }
+    if(key == GLFW_KEY_4) {
+        SELECTED_TYPE = WOOD;
+    }
+    if(key == GLFW_KEY_5) {
+        SELECTED_TYPE = MAGMA;
     }
     if(key == GLFW_KEY_M) {
         saveToImage();
@@ -169,9 +175,10 @@ void updatePowderSimulation() {
             int index = j * GAMEWIDTH + i;
 
             bool aboveBottom = j > 1;
+            bool belowTop = j < GAMEWIDTH - 1;
 
             unsigned char* theByte = &FOREPIXELS[index];
-            if(aboveBottom) {
+            if(aboveBottom && belowTop) {
 
                 if(getColorBits(*theByte) != 0 && (isOddBit(*theByte) == isOddFrame)) {
                     setOddBit(theByte, isOddFrame ? 0 : 1);
@@ -367,7 +374,7 @@ int main() {
     glVertexAttribPointer(foretex_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
     glUseProgram(FORESHADER);
-    glUniform3fv(glGetUniformLocation(FORESHADER, "colorPalette"), 16, (const float*)&COLORPALETTE[0]);
+    glUniform4fv(glGetUniformLocation(FORESHADER, "colorPalette"), 16, (const float*)&COLORPALETTE[0]);
 
 
     GLuint backVAO;
@@ -388,10 +395,6 @@ int main() {
     GLint backtex_attrib = glGetAttribLocation(FORESHADER, "texcoord");
     glEnableVertexAttribArray(backtex_attrib);
     glVertexAttribPointer(backtex_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-    glUseProgram(BACKSHADER);
-    glUniform3fv(glGetUniformLocation(BACKSHADER, "colorPalette"), 16, (const float*)&COLORPALETTE[0]);
-
 
     //load the background image
     BACKGROUNDIMAGE = stbi_load("assets/space.png", &BIWIDTH, &BIHEIGHT, &BICHANS, 1);

@@ -13,4 +13,7 @@ extern ParticleFunc PARTICLEFUNCS[16];
 
 void densitySwapFunc(unsigned char* FOREPIXELS, int index, bool isOddFrame);
 
+unsigned char* safeGet(unsigned char* FOREPIXELS, int index);
+void safeSet(unsigned char* FOREPIXELS, int index, unsigned char byte);
+
 #endif

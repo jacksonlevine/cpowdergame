@@ -8,7 +8,7 @@ unsigned char DENSITIES[16] = {
 
     10,
     10,
-    10,
+    0,
     10,
 
     10,
@@ -20,4 +20,26 @@ unsigned char DENSITIES[16] = {
     10,
     10,
     10
+};
+
+unsigned char FLAMMABLES[16] = {
+    0,
+    0,
+    0,
+    0,
+
+    1,
+    0,
+    0,
+    0,
+
+    0,
+    0,
+    0,
+    0,
+
+    0,
+    0,
+    0,
+    0
 };
