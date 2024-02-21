@@ -455,8 +455,8 @@ int main() {
         glBindBuffer(GL_ARRAY_BUFFER, foreVBO);
         glBindTexture(GL_TEXTURE_2D, FORETEXTURE);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GAMEWIDTH, GAMEHEIGHT, GL_RED, GL_UNSIGNED_BYTE, FOREPIXELS);
-        glUseProgram(BLURSHADER);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        //glUseProgram(BLURSHADER);
+        //glDrawArrays(GL_TRIANGLES, 0, 6);
         glUseProgram(FORESHADER);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         
