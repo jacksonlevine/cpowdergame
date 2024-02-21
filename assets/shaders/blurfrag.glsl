@@ -3,13 +3,22 @@ out vec4 FragColor;
 in vec2 TexCoord;
 uniform sampler2D ourTexture;
 uniform vec4 colorPalette[16];
+uniform float blurries[16];
 
 vec4 tfc(vec2 tc) {
     float theByte = texture(ourTexture, tc).r * 255.0;
     int colorIndex = int(theByte) & 0x0F; // 0x0F is 00001111, so we get the 4 lower bytes only
     vec4 color = colorPalette[colorIndex];
 
-    return color;
+    if(tc.x < 0.01f && tc.y < 0.01f) {
+        return vec4(0,0,0,0);
+    }
+
+    if(blurries[colorIndex] == 1) {
+        return color;
+    } else {
+        return vec4(0,0,0,0);
+    }
 
 }
 
@@ -22,9 +31,9 @@ void main() {
     float Pi = 6.28318530718; // Pi*2
     
     // GAUSSIAN BLUR SETTINGS {{{
-    float Directions = 16.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
-    float Quality = 3.0; // BLUR QUALITY (Default 4.0 - More is better but slower)
-    float Size = 8.0; // BLUR SIZE (Radius)
+    float Directions = 24.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
+    float Quality = 4.0; // BLUR QUALITY (Default 4.0 - More is better but slower)
+    float Size = 5.0; // BLUR SIZE (Radius)
     // GAUSSIAN BLUR SETTINGS }}}
    
     vec2 Radius = Size/iResolution.xy;
@@ -50,7 +59,7 @@ void main() {
     }
 
     Color.a = (Color.r + Color.g + Color.b) / 1.0;
-
-    FragColor =  Color;
+    Color = Color*15;
+    FragColor =  vec4(Color.rgb, 0.5);
 
 }

@@ -20,6 +20,7 @@
 GLFWwindow *WINDOW;
 GLuint FORESHADER;
 GLuint BACKSHADER;
+GLuint BLURSHADER;
 
 unsigned char BACKPIXELS[GAMEWIDTH*GAMEHEIGHT];
 unsigned char FOREPIXELS[GAMEWIDTH*GAMEHEIGHT];
@@ -59,7 +60,7 @@ float COLORPALETTE[16 * 4]  = {
     0.5f, 0.5f, 0.5f, 1.0f,//stone 3
     0.702f, 0.522f, 0.38f, 1.0f,//wood 4
     1.0f, 0.5f, 0.0f, 1.0f,//magma 5
-    1.0f, 1.0f, 1.0f, 1.0f,//steam 6
+    1.0f, 1.0f, 1.0f, 0.5f,//steam 6
     0.522f, 0.412f, 0.318f, 1.0f,//dirt 7
     0.341f, 0.224f, 0.118f, 1.0f,//wet dirt 8
     1.0f, 1.0f, 0.0f, 1.0f,//yellow 9
@@ -179,8 +180,8 @@ void updatePowderSimulation() {
 
             int index = j * GAMEWIDTH + i;
 
-            bool aboveBottom = j > 1;
-            bool belowTop = j < GAMEWIDTH - 1;
+            bool aboveBottom = j > 0;
+            bool belowTop = j < GAMEWIDTH;
 
             unsigned char* theByte = &FOREPIXELS[index];
             if(aboveBottom && belowTop) {
@@ -201,10 +202,11 @@ void updatePowderSimulation() {
 
             int index = j * GAMEWIDTH + i;
 
-            bool aboveBottom = j > 1;
+            bool aboveBottom = j > 0;
+            bool belowTop = j < GAMEWIDTH;
 
             unsigned char* theByte = &FOREPIXELS[index];
-            if(aboveBottom) {
+            if(aboveBottom && belowTop) {
 
                 if(getColorBits(*theByte) != 0 && (isOddBit(*theByte) == isOddFrame)) {
                     setOddBit(theByte, isOddFrame ? 0 : 1);
@@ -333,6 +335,7 @@ int main() {
 
     createShader("assets/shaders/vert.glsl", "assets/shaders/backfrag.glsl", &BACKSHADER, "Background shader");
     createShader("assets/shaders/vert.glsl", "assets/shaders/frag.glsl", &FORESHADER, "Foreground shader");
+    createShader("assets/shaders/vert.glsl", "assets/shaders/blurfrag.glsl", &BLURSHADER, "Blurry shader");
 
     glGenTextures(1, &BACKTEXTURE);
     glBindTexture(GL_TEXTURE_2D, BACKTEXTURE);
@@ -347,6 +350,8 @@ int main() {
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     float quadVertices[] = {
         //positions   //texture coords
@@ -381,6 +386,9 @@ int main() {
     glUseProgram(FORESHADER);
     glUniform4fv(glGetUniformLocation(FORESHADER, "colorPalette"), 16, (const float*)&COLORPALETTE[0]);
 
+    glUseProgram(BLURSHADER);
+    glUniform4fv(glGetUniformLocation(BLURSHADER, "colorPalette"), 16, (const float*)&COLORPALETTE[0]);
+    glUniform1fv(glGetUniformLocation(BLURSHADER, "blurries"), 16, (const float*)&BLURRIES[0]);
 
     GLuint backVAO;
     GLuint backVBO;
@@ -442,13 +450,16 @@ int main() {
             drawForegroundPixels(MOUSEX, MOUSEY, 0);
         }
 
-        glUseProgram(FORESHADER);
+        
         glBindVertexArray(foreVAO);
         glBindBuffer(GL_ARRAY_BUFFER, foreVBO);
         glBindTexture(GL_TEXTURE_2D, FORETEXTURE);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GAMEWIDTH, GAMEHEIGHT, GL_RED, GL_UNSIGNED_BYTE, FOREPIXELS);
+        glUseProgram(BLURSHADER);
         glDrawArrays(GL_TRIANGLES, 0, 6);
-
+        glUseProgram(FORESHADER);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        
 
         glfwSwapBuffers(WINDOW);
         glfwPollEvents();

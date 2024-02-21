@@ -14,4 +14,6 @@ extern unsigned char DENSITIES[16];
 
 extern unsigned char FLAMMABLES[16];
 
+extern float BLURRIES[16];
+
 #endif
