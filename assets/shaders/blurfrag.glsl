@@ -33,7 +33,7 @@ void main() {
     // GAUSSIAN BLUR SETTINGS {{{
     float Directions = 24.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
     float Quality = 4.0; // BLUR QUALITY (Default 4.0 - More is better but slower)
-    float Size = 5.0; // BLUR SIZE (Radius)
+    float Size = 6.0; // BLUR SIZE (Radius)
     // GAUSSIAN BLUR SETTINGS }}}
    
     vec2 Radius = Size/iResolution.xy;
@@ -59,7 +59,7 @@ void main() {
     }
 
     Color.a = (Color.r + Color.g + Color.b) / 1.0;
-    Color = Color*15;
+    Color = Color*20;
     FragColor =  vec4(Color.rgb, 0.5);
 
 }
